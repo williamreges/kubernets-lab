@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: nginx #selector aponta para o label 'nginx' dos pods
+  template:  # daqui pra baixo é o pod do RS
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:stable
+        ports:
+          - containerPort: 80
+        # command: ["echo", "\"<html><body><h2>Primeiro Servidor Web </h2><br> <h3>Endreço: $(hostname -f)</h3></body></html>\" > /var/www/html/index.html"]

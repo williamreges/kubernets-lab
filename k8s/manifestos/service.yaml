@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+spec:
+  # type: LoadBalancer
+  selector:
+    app: nginx  # selector aponta para o label 'nginx' dos pods
+  ports:
+  - port: 8083 #porta de entrada do service
+    targetPort: 80 #porta redirecionada para os pods
