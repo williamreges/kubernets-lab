@@ -1,6 +1,24 @@
+# Estudo de Kubernets
+
+* [Conceitos](#conceitos)
+* [1. Instale Cluster Localmente](#1-instale-localmente)
+  * [Instale k3d localmente](#instale-o-k3d-localmente)
+  * [Instale o KubeCtl](#instale-o-kubectl)
+* [2. Workloads](#2-workloads)
+  * [Pods](#21-pods)
+  * [ReplicationSet](#22-replicaset)
+  * [Deployment](#23-deployment)
+* [3. Service - LoadBalancer e Rede](#3-service-loadbalancing-e-rede)
+  * [Type](#31-type)
+  * [Expondo porta para teste externo na núvem](#32-expondo-porta-para-teste-externo-na-nuvém)
+* [4. Agrupar Recursos no Mesmo manifesto](#4-agrupar-recursos-no-mesmo-manifesto)
+* [Comandos Diversos](#comandos-diversos)
+
+
 ## Conceitos
 
-Necessidade
+Necessidade que precisamos em nosso ambiente e que o Kubernets nos auxilia para nos entregar:
+
  - Variáveis de ambiente
  - Gerenciamento de senhas/secrets
  - Escolher os recursos computacionais que a minha aplicação roda
@@ -49,6 +67,23 @@ Os arquivos de manifestos dos exemplos para subir com  `kubectl` estão na pasta
 
 ### 2.1. Pods
 
+[***pod.yaml***](./manifestos/pod.yaml)
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+  labels:
+    name: nginx
+spec:
+  containers:
+    - name: nginx
+      image: nginx:latest
+      ports:
+        - containerPort: 80
+
+```
+
 a. Subindo um pod pelo manifesto `pod.yaml`
 ```shell
 kubectl apply -f pod.yaml
@@ -73,13 +108,37 @@ O problema de subir apenas pods é que não tem outro pod rodando significando q
 
 ### 2.2. ReplicaSet
 
-
 `ReplicaSet` ou `RS` é uma camada acima de pods que tem a função de verificação de pods garandindo que estejam sempre 
 rodando. Através do `RS` que se configura o número de pods que devem estar rodando de uma aplicação e quantas réplicas 
 do mesmo devem estar rodando. E para que o ReplicaSet possa saber os pods que serão replicados é necessário criar`label`
 nos pods e vincular o `RS` ao Pod pela chave `matchLabels.app:`, pois é através disso que o `RS` gerencia os pods. 
 
 ![Alt text](images/image002.png)
+
+[***replicaset.yaml***](./manifestos/replicaset.yaml)
+```yaml
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: nginx-replicaset
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: nginx
+  template:  # daqui pra baixo é o pod do RS
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        # image: nginx:latest
+        image: nginx
+        ports:
+          - containerPort: 80
+
+```
 
 #### Subindo um ReplicaSet pelo manifesto
 
@@ -128,14 +187,38 @@ kubectl get rs
 
 ### 2.3 Deployment
 
-O `Deployment` é um layer acima do `ReplicaSet` 
-
-![Alt text](images/image006.png)
-
+O `Deployment` é um layer acima do `ReplicaSet`. 
 `Deployment` gerencia replicaset de acordo com sua especificação. Ele quem é responsável por criar `replicaset` e este 
 por sua vez cria os `pods`. No entanto se um `Deployment` tiver alguma alteração em sua especificação será criado 
 automaticamente outro `replicaset` com novos `pods` atualizados ao mesmo tempo em que é desligado os pods do replicaset 
 anterior.
+
+![Alt text](images/image006.png)
+
+[***deployment.yaml***](./manifestos/deployment.yaml)
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: nginx #selector aponta para o label 'nginx' dos pods
+  template:  # daqui pra baixo é o pod do RS
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:stable
+        ports:
+          - containerPort: 80
+```
+
+
 
 
 #### Subindo um Deployment pelo manifesto
@@ -150,6 +233,7 @@ kubectl apply -f deployment.yaml
 kubectl rollout status deployment/nginx-deployment
 ```
 será mostrado o status do rollout do deploy:
+
 ![status-deploy](./images/image017.png)
 
 #### Visualizar o Deployment
@@ -212,7 +296,21 @@ configurar um `Service` para que o Kubernets faça o balanceamento.
 
 ![Alt text](images/image013.png)
 
+[***service.yaml***](./manifestos/service.yaml)
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-svc
+spec:
+  # type: LoadBalancer
+  selector:
+    app: nginx  # selector aponta para o label 'nginx' dos pods
+  ports:
+  - port: 8080 #porta de entrada do service
+    targetPort: 80 #porta redirecionada para os pods
 
+```
 Para que o `service` possa enxergar os pods para o balanceamento é necessário configurar `labels` nos pods e apontar o 
 service para eles.
 
@@ -229,7 +327,8 @@ kubectl get svc
 
 ![Alt text](images/image014.png)
 
-#### Tipos de Service
+
+### 3.1 Type
 
   Existe 4 tipo de services no kubernets. São eles:
   |Type|Descrição|
@@ -260,7 +359,7 @@ Obs:
 > `Sevice Disconvery` e `DNS`.
 
 
-#### Expondo porta para teste externo
+### 3.2 Expondo porta para teste externo na Nuvém
 O tipo padrão de service é `ClusterIp` e para testar a aplicação e permitir que seja acessado pela internet é preciso 
 configurar o manifesto  `service` para que ele gere um IP Externo de acesso pela núvem. No caso é necessário configurar 
 o manifesto para o tipo `LoadBancer`:
@@ -285,9 +384,10 @@ o manifesto para o tipo `LoadBancer`:
 > Leia mais sobre tipos de services em: Service Type
 
 ---
-## 5. Agrupar recursos no mesmo Manifesto
+## 4. Agrupar recursos no mesmo Manifesto
 Muitos aplicativos exigem a criação de vários recursos, como uma implantação junto com um serviço. O gerenciamento de vários recursos pode ser simplificado agrupando-os no mesmo arquivo (separado por em YAML). Por exemplo: 
 
+[***nginx-deployment.yaml***](./manifestos/nginx-deployment.yaml)
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -325,12 +425,17 @@ spec:
   - port: 8080
     targetPort: 80
 ```
+Sendo assim uma aplicação ao ter o manifesto para subir recursos no cluster não necessita criar arquivos separados como `pod.yaml`,`replicaset.yaml` e `service.yaml`. Nesse exemplo acima o arquivo `nginx-deployment.yam.` já teria os recursos agrupados tudo em um só arquivo de manifesto.
 
 > **Obs:**
 >
 > Para mais informações sobre esse recurso de agrupar manifesto veja em: https://kubernetes.io/docs/concepts/workloads/management/
 
-## 6. Comandos diversos
+---
+
+## Glossário
+
+### Comandos diversos
 
 ### Deployment
 Criando recursos com manifesto yaml
@@ -373,6 +478,10 @@ kubectl rollout history deployment nginx-deployment
 Restarta o deployment criando novos `rs` e novos `pods`:
 ```shell
 kubectl rollout restart deployment nginx-deployment
+```
+Rollback de deployment para a penultima versão:
+```shell
+kubectl rollout undo deployment nginx-deployment
 ```
 
 Visualize status de deployment:

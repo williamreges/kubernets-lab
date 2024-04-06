@@ -17,4 +17,3 @@ spec:
         image: nginx:stable
         ports:
           - containerPort: 80
-        # command: ["echo", "\"<html><body><h2>Primeiro Servidor Web </h2><br> <h3>Endreço: $(hostname -f)</h3></body></html>\" > /var/www/html/index.html"]
