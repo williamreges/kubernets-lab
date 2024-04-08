@@ -41,9 +41,14 @@ Instale o k3d para poder criar clusters locamente com kubernets
 ```shell
 curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=v5.0.0 bash
 ```
-E logo após, crie um cluster com comando
+E logo após, crie um cluster simples com comando
 ```shell
 k3d cluster create cluster-local
+```
+
+ou avançado com 2 nós com comando
+```shell
+k3d cluster create cluster-local --serves 2 --agents 2
 ```
 ### Instale o kubectl
 Veja como instalar o Kubectl dependendo de qual sistema operacional estaja utilizando em: https://kubernetes.io/docs/tasks/tools/
@@ -66,6 +71,7 @@ Ao rodar esse comando deve aparecer algo como no exemplo:
 Os arquivos de manifestos dos exemplos para subir com  `kubectl` estão na pasta `\manifestos`.
 
 ### 2.1. Pods
+Um POD é a menor unidade de objeto que o Kubernets contém.
 
 [***pod.yaml***](./manifestos/pod.yaml)
 ```yaml
@@ -298,17 +304,16 @@ configurar um `Service` para que o Kubernets faça o balanceamento.
 
 [***service.yaml***](./manifestos/service.yaml)
 ```yaml
-apiVersion: v1
-kind: Service
 metadata:
   name: nginx-svc
 spec:
-  # type: LoadBalancer
+  type: NodePort # expoe service na porta do nó
   selector:
     app: nginx  # selector aponta para o label 'nginx' dos pods
   ports:
-  - port: 8080 #porta de entrada do service
-    targetPort: 80 #porta redirecionada para os pods
+  - port: 8080 # porta de entrada do service
+    targetPort: 80 # porta redirecionada para os pods
+    nodePort: 30007 # porta do nó que redireciona para service
 
 ```
 Para que o `service` possa enxergar os pods para o balanceamento é necessário configurar `labels` nos pods e apontar o 
@@ -322,7 +327,7 @@ kubectl apply -f service.yaml
 #### Visualizar o Service
 
 ```shell
-kubectl get svc
+kubectl get svc/nginx-svc
 ```
 
 ![Alt text](images/image014.png)
@@ -346,12 +351,22 @@ esse serviço por esse endereço será redirecionado a algum pod pela porta 80 a
 de balanceamento no exemplo é `round robin`.
 
  #### Testando service com port-forward local
-   Pode testar algum container diretamente abrindo porta de acesso direto com o comando 
+   Pode testar algum service diretamente abrindo porta de acesso direto com o comando 
    ```shell
    kubectl port-forward svc/nginx-svc 8080:8080
    ```
    A porta 8080 do pc local está mapeado para a porta 8080 do service. Acesse http://localhost:8080/
 
+#### Testando service pela porta 30000 do nó localmente 
+O `port-forward` não é recomendo utilizar mesmo em ambiente de dev. Para testar algum service diretamente pela porta local `30000` é necessário redirecionar essa porta para dentro dos nós (port=30007) do cluster no momento da criação expondo assim o acesso externo do service semelhante a exponse de um container docker.
+
+```shell
+k3d cluster create cluster-local --servers 2 --agents 2 -p "30000:30007@loadbalancer"
+```
+
+O Log abaixo mostra a criação de um cluster com 2 nós. A porta `30000` do localhost está sendo direcionado para a porta `30007` de cada nó do cluster. Sendo assim, cada `kind=Services` que tenha a chave `type=NodePort` e `nodePort=30007` estará habilitado para ser acessado por clientes locais de forma externa.
+
+![kubernets](./images/image019.png)
 
 Obs:
 > O `service` foi criado com nome `nginx-svc`, ou seja, sua chamada pode ser feita também através desse nome pois o 
@@ -455,8 +470,8 @@ Deletando Deployment
 kubectl delete deployment my-nginx
 ```
 
-### Logs
-Visualizaar logs de 1 pod
+### Views, describes e logs
+Visualizar logs de 1 pod
 ```shell
 kubectl logs nginx-deployment-69b96679f-ppnsf
 ```
@@ -470,6 +485,13 @@ Visualizar uma descrição do service
 kubectl describe service/nginx-svc
 ```
 
+Visualizar todos recursos como pods, services, deployments e replicasets
+```shell
+kubectl get all
+```
+Exemplo de view:
+
+![kubectl](./images/image018.png)
 ### Rollout
 Visualizar histórico de versões de deployment:
 ```shell
@@ -505,6 +527,28 @@ Abra porta 8080 de um service se o tipo de serviço for `type=ClientIP` ou `type
 kubectl port-forward svc/nginx-svc 8080:8080
 ```
 Leia mais sobre tipos de services em: [Service Type](https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types)
+
+### Exec Comando direto em um Pod
+Exemplo de como obterdata de um POD
+```shell
+kubectl exec nginx-deployment-7d799d88c7-5vjm2 -- date
+```
+Exemplo de como obter variaveis de um POD
+```shell
+kubectl exec nginx-deployment-7d799d88c7-5vjm2 -- env
+```
+Log da busca:
+
+![kub](./images/image020.png)
+
+
+### Rascunho
+
+```shell
+echo "<html><body><h2>Primeiro Servidor Web </h2><br> <h3>Hostname: $HOST
+NAME </h3></body></html>" > /usr/share/nginx/html/index.html 
+```
+
 ## Referencias
 
 [Iniciando com Kubernets - Youtube - FullStack](https://www.youtube.com/watch?v=tRbFs3CCyPQ)
@@ -516,4 +560,7 @@ Leia mais sobre tipos de services em: [Service Type](https://kubernetes.io/docs/
 [K3D](https://k3d.io/v5.6.0/)
 
 [Como instalar K3D](https://blog.4linux.com.br/k3d-utilizando-uma-solucao-para-realizar-labotarorios-de-kubernetes-de-baixo-custo-computacional/)
+
+
+
 

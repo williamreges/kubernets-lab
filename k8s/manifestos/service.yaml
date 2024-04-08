@@ -3,9 +3,10 @@ kind: Service
 metadata:
   name: nginx-svc
 spec:
-  # type: LoadBalancer
+  type: NodePort # expoe service na porta do nó do cluster para ser acessado externamente
   selector:
     app: nginx  # selector aponta para o label 'nginx' dos pods
   ports:
-  - port: 8080 #porta de entrada do service
-    targetPort: 80 #porta redirecionada para os pods
+  - port: 8080 # porta de entrada do service
+    targetPort: 80 # porta redirecionada para os pods
+    nodePort: 30007 # porta do nó que redireciona para a porta do service
