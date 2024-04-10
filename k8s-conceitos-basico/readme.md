@@ -10,6 +10,7 @@
   * [Deployment](#23-deployment)
 * [3. Service - LoadBalancer e Rede](#3-service-loadbalancing-e-rede)
   * [Type](#31-type)
+  * [Testando Service pela porta 30000 do nó localmente](#testando-service-pela-porta-30000-do-nó-localmente)
   * [Expondo porta para teste externo na núvem](#32-expondo-porta-para-teste-externo-na-nuvém)
 * [4. Agrupar Recursos no Mesmo manifesto](#4-agrupar-recursos-no-mesmo-manifesto)
 * [Comandos Diversos](#comandos-diversos)
@@ -541,13 +542,12 @@ Log da busca:
 
 ![kub](./images/image020.png)
 
-
-### Rascunho
-
+### K3D
+Delete um Cluster 
 ```shell
-echo "<html><body><h2>Primeiro Servidor Web </h2><br> <h3>Hostname: $HOST
-NAME </h3></body></html>" > /usr/share/nginx/html/index.html 
+k3d cluster delete cluster-local
 ```
+
 
 ## Referencias
 
